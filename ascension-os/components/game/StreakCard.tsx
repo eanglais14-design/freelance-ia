@@ -1,5 +1,4 @@
-import { Flame, TrendingUp, Calendar } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StreakCardProps {
@@ -12,57 +11,29 @@ export function StreakCard({ streak, className }: StreakCardProps) {
   const isOnFire = streak >= 30;
 
   return (
-    <Card className={cn(
-      "overflow-hidden transition-all duration-200",
-      isOnFire ? "border-red-500/30 shadow-red-500/10 shadow-lg" :
-      isHot ? "border-orange-500/30 shadow-orange-500/10 shadow-lg" :
-      "card-glow",
+    <div className={cn(
+      "relative bg-[#0a0a0a] border border-[rgba(139,92,246,0.12)] p-5 transition-all duration-200",
+      "before:absolute before:top-0 before:left-0 before:w-3 before:h-px before:bg-violet-500 before:opacity-60",
+      "after:absolute after:top-0 after:left-0 after:w-px after:h-3 after:bg-violet-500 after:opacity-60",
+      "hover:border-[rgba(139,92,246,0.28)]",
       className
     )}>
-      <div className={cn(
-        "h-1 w-full",
-        isOnFire ? "bg-gradient-to-r from-red-500 to-orange-500" :
-        isHot ? "bg-gradient-to-r from-orange-500 to-amber-500" :
-        "bg-gradient-to-r from-amber-500 to-yellow-500"
-      )} />
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Current Streak</p>
-            <div className="flex items-baseline gap-1">
-              <span className={cn(
-                "text-3xl font-bold",
-                isOnFire ? "text-red-400" :
-                isHot ? "text-orange-400" :
-                "text-amber-400"
-              )}>
-                {streak}
-              </span>
-              <span className="text-sm text-muted-foreground">days</span>
-            </div>
-          </div>
-          <div className={cn(
-            "p-3 rounded-xl",
-            isOnFire ? "bg-red-500/15" :
-            isHot ? "bg-orange-500/15" :
-            "bg-amber-500/15"
-          )}>
-            <Flame className={cn(
-              "h-7 w-7",
-              isOnFire ? "text-red-400 animate-pulse" :
-              isHot ? "text-orange-400" :
-              "text-amber-400"
-            )} />
-          </div>
+      <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#555555] mb-3">Streak</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <span className="font-mono text-3xl font-bold text-[#e8e8e8] leading-none">{streak}</span>
+          <span className="font-mono text-[10px] text-[#444444] ml-1">days</span>
         </div>
-        {streak >= 3 && (
-          <p className="text-xs text-muted-foreground mt-2">
-            {isOnFire ? "🔥 On fire! Keep going!" :
-             isHot ? "⚡ Great momentum!" :
-             "✨ Streak active!"}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+        <Flame className={cn(
+          "h-5 w-5 mb-0.5",
+          isOnFire ? "text-red-400" : isHot ? "text-amber-400" : "text-violet-400/50"
+        )} />
+      </div>
+      {streak >= 3 && (
+        <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-violet-500/60 mt-2">
+          {isOnFire ? "// on fire" : isHot ? "// momentum" : "// active"}
+        </p>
+      )}
+    </div>
   );
 }

@@ -1,11 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Target, ChevronDown, ChevronUp, Check, Circle } from "lucide-react";
-import { Objective, Milestone } from "@/types";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { getDomainColor, getDomainIcon, getDomainLabel } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Objective } from "@/types";
+import { getDomainColor, getDomainIcon, cn } from "@/lib/utils";
 
 interface ObjectiveCardProps {
   objective: Objective;
@@ -23,79 +20,74 @@ export function ObjectiveCard({ objective, onMilestoneComplete, className }: Obj
   const icon = getDomainIcon(objective.domain);
 
   return (
-    <Card className={cn("overflow-hidden card-glow hover:border-violet-500/20 transition-all", className)}>
-      <div className="h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${color}88, transparent)` }} />
-      <CardContent className="p-4">
-        <div
-          className="flex items-start gap-3 cursor-pointer"
-          onClick={() => setExpanded(!expanded)}
-        >
-          <span className="text-xl mt-0.5">{icon}</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-medium text-sm">{objective.title}</h3>
-              <Badge variant={objective.status === "completed" ? "easy" : "outline"} className="text-xs">
-                {objective.status}
-              </Badge>
+    <div className={cn(
+      "relative bg-[#0a0a0a] border border-[rgba(139,92,246,0.12)] transition-all duration-200",
+      "before:absolute before:top-0 before:left-0 before:w-3 before:h-px before:opacity-60",
+      "after:absolute after:top-0 after:left-0 after:w-px after:h-3 after:opacity-60",
+      "hover:border-[rgba(139,92,246,0.28)]",
+      className
+    )}
+    style={{
+      "--tw-before-bg": color,
+      "--tw-after-bg": color,
+    } as any}>
+      {/* Top domain color line */}
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ backgroundColor: color, opacity: 0.25 }} />
+
+      <button
+        className="w-full flex items-start gap-3 p-4 text-left"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <span className="text-base mt-0.5 shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-xs text-[#e8e8e8] mb-1">{objective.title}</p>
+          {total > 0 && (
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-[#444444]">{completed}/{total} milestones</span>
+                <span className="font-mono text-[9px] text-violet-500/60">{progress}%</span>
+              </div>
+              <div className="h-px bg-[rgba(139,92,246,0.08)]">
+                <div className="h-px transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: color, opacity: 0.6 }} />
+              </div>
             </div>
-            {objective.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{objective.description}</p>
-            )}
-            {total > 0 && (
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{completed}/{total} milestones</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%`, backgroundColor: color }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="shrink-0">
-            {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </div>
+          )}
         </div>
-        {expanded && milestones.length > 0 && (
-          <div className="mt-3 space-y-2 border-t border-border pt-3">
-            {milestones.map((milestone) => (
-              <div
-                key={milestone.id}
-                className="flex items-center gap-2 group/milestone"
-              >
-                <button
-                  onClick={() => milestone.status === "pending" && onMilestoneComplete?.(milestone.id)}
-                  className={cn(
-                    "h-5 w-5 rounded-full border flex items-center justify-center transition-all shrink-0",
-                    milestone.status === "completed"
-                      ? "border-green-500/50 bg-green-500/15"
-                      : "border-border hover:border-green-500/50 hover:bg-green-500/10"
-                  )}
-                >
-                  {milestone.status === "completed" ? (
-                    <Check className="h-3 w-3 text-green-400" />
-                  ) : (
-                    <Circle className="h-3 w-3 text-muted-foreground opacity-0 group-hover/milestone:opacity-100" />
-                  )}
-                </button>
-                <span className={cn(
-                  "text-xs",
-                  milestone.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                )}>
-                  {milestone.title}
-                </span>
-                {milestone.xp_reward > 0 && (
-                  <span className="text-xs text-violet-400 ml-auto">+{milestone.xp_reward} XP</span>
+        <div className="shrink-0 mt-0.5">
+          {expanded
+            ? <ChevronUp className="h-3 w-3 text-[#444444]" />
+            : <ChevronDown className="h-3 w-3 text-[#444444]" />}
+        </div>
+      </button>
+
+      {expanded && milestones.length > 0 && (
+        <div className="border-t border-[rgba(139,92,246,0.07)] px-4 pb-3 pt-2 space-y-1.5">
+          {milestones.map((milestone) => (
+            <div key={milestone.id} className="flex items-center gap-2">
+              <button
+                onClick={() => milestone.status === "pending" && onMilestoneComplete?.(milestone.id)}
+                className={cn(
+                  "w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-all",
+                  milestone.status === "completed"
+                    ? "border-violet-500/40 bg-violet-500/10"
+                    : "border-[rgba(139,92,246,0.2)] hover:border-violet-500/50"
                 )}
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              >
+                {milestone.status === "completed" && <Check className="h-2 w-2 text-violet-400" />}
+              </button>
+              <span className={cn(
+                "font-mono text-[10px]",
+                milestone.status === "completed" ? "text-[#444444] line-through" : "text-[#888888]"
+              )}>
+                {milestone.title}
+              </span>
+              {milestone.xp_reward > 0 && (
+                <span className="font-mono text-[9px] text-violet-500/50 ml-auto">+{milestone.xp_reward}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
