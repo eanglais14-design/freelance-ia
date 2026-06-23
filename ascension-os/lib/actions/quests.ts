@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { awardXp, updateStreak } from "./profile";
 import { revalidatePath } from "next/cache";
 import { Quest } from "@/types";
+import { checkBadges, BadgeKey } from "@/lib/badges";
+import { calculateLevel } from "@/lib/utils";
 
 export async function getQuests(type?: "daily" | "weekly" | "longterm") {
   const supabase = await createClient();
@@ -26,7 +28,6 @@ export async function getDailyQuests() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // Reset daily quests if needed
   await resetDailyQuestsIfNeeded(user.id);
 
   const { data } = await supabase
@@ -54,8 +55,7 @@ async function resetDailyQuestsIfNeeded(userId: string) {
 
   const needsReset = completedToday.some((q) => {
     if (!q.completed_at) return false;
-    const completedDate = new Date(q.completed_at).toISOString().split("T")[0];
-    return completedDate < today;
+    return new Date(q.completed_at).toISOString().split("T")[0] < today;
   });
 
   if (needsReset) {
@@ -67,7 +67,7 @@ async function resetDailyQuestsIfNeeded(userId: string) {
   }
 }
 
-export async function completeQuest(questId: string) {
+export async function completeQuest(questId: string): Promise<{ success?: boolean; xp?: number; newBadges?: string[]; error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
@@ -82,11 +82,8 @@ export async function completeQuest(questId: string) {
   if (!quest || quest.status === "completed") return { error: "Quest not found or already completed" };
 
   const now = new Date().toISOString();
-  await supabase
-    .from("quests")
-    .update({ status: "completed", completed_at: now })
-    .eq("id", questId);
 
+  await supabase.from("quests").update({ status: "completed", completed_at: now }).eq("id", questId);
   await supabase.from("quest_completions").insert({
     user_id: user.id,
     quest_id: questId,
@@ -95,10 +92,23 @@ export async function completeQuest(questId: string) {
     completed_at: now,
   });
 
-  await awardXp(user.id, quest.xp_reward, quest.domain, quest.coin_reward);
+  // Get updated profile for streak bonus
+  const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+  const streak = profile?.streak ?? 0;
+  let streakBonus = 0;
+  if (streak >= 30) streakBonus = 100;
+  else if (streak >= 7) streakBonus = 50;
+  else if (streak >= 3) streakBonus = 25;
+
+  const totalXp = quest.xp_reward + streakBonus;
+
+  await awardXp(user.id, totalXp, quest.domain, quest.coin_reward);
   await updateStreak(user.id);
 
-  // Check if all daily quests are done for bonus XP
+  // Log XP
+  await supabase.from("xp_logs").insert({ user_id: user.id, xp_gained: totalXp, source: "quest" });
+
+  // All-daily bonus
   if (quest.quest_type === "daily") {
     const { data: allDaily } = await supabase
       .from("quests")
@@ -106,15 +116,38 @@ export async function completeQuest(questId: string) {
       .eq("user_id", user.id)
       .eq("quest_type", "daily");
 
-    const allCompleted = allDaily?.every((q) => q.status === "completed");
-    if (allCompleted) {
+    if (allDaily?.every((q) => q.status === "completed")) {
       await awardXp(user.id, 100, quest.domain, 0);
+      await supabase.from("xp_logs").insert({ user_id: user.id, xp_gained: 100, source: "daily_bonus" });
     }
+  }
+
+  // Badge checking
+  const { data: existingBadges } = await supabase.from("badges").select("badge_key").eq("user_id", user.id);
+  const { data: completionsCount } = await supabase
+    .from("quest_completions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  const { data: updatedProfile } = await supabase.from("profiles").select("total_xp, streak").eq("user_id", user.id).single();
+  const level = calculateLevel(updatedProfile?.total_xp ?? 0);
+
+  const newBadgeKeys = checkBadges({
+    totalQuestsCompleted: (completionsCount as any)?.count ?? 0,
+    streak: updatedProfile?.streak ?? streak,
+    level,
+    existingBadges: (existingBadges ?? []).map((b: any) => b.badge_key),
+  });
+
+  if (newBadgeKeys.length > 0) {
+    await supabase.from("badges").insert(
+      newBadgeKeys.map((key) => ({ user_id: user.id, badge_key: key }))
+    );
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/quests");
-  return { success: true, xp: quest.xp_reward };
+  return { success: true, xp: totalXp, newBadges: newBadgeKeys };
 }
 
 export async function createQuest(data: {

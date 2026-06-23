@@ -8,8 +8,8 @@ interface WeeklyChartProps {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#0a0a0a] border border-[rgba(139,92,246,0.2)] px-3 py-2">
-        <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-[#555555]">{label}</p>
+      <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.08)] px-3 py-2">
+        <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-[#555]">{label}</p>
         <p className="font-mono text-sm font-bold text-violet-400">{payload[0].value} xp</p>
       </div>
     );
@@ -22,21 +22,12 @@ export function WeeklyChart({ data }: WeeklyChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height={160}>
-      <BarChart data={data} barSize={20} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke="rgba(139,92,246,0.08)" strokeDasharray="0" />
-        <XAxis
-          dataKey="day"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 9, fill: "#444444", fontFamily: "monospace" }}
-        />
-        <YAxis
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 9, fill: "#444444", fontFamily: "monospace" }}
-        />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(139,92,246,0.05)" }} />
-        <Bar dataKey="xp" radius={[0, 0, 0, 0]}>
+      <BarChart data={data} barSize={18} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" />
+        <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#444444", fontFamily: "monospace" }} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#444444", fontFamily: "monospace" }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.02)" }} />
+        <Bar dataKey="xp">
           {data.map((entry, index) => (
             <Cell
               key={`cell-${index}`}

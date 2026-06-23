@@ -1,10 +1,10 @@
 "use client";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend
+  PieChart, Pie, Cell,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDomainColor, getDomainLabel } from "@/lib/utils";
+import { XPCurveChart } from "@/components/game/XPCurveChart";
 
 const RADIAN = Math.PI / 180;
 const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
@@ -12,16 +12,16 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11}>{`${(percent * 100).toFixed(0)}%`}</text>;
+  return <text x={x} y={y} fill="#e8e8e8" textAnchor="middle" dominantBaseline="central" fontSize={9} fontFamily="monospace">{`${(percent * 100).toFixed(0)}%`}</text>;
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const DarkTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg text-sm">
-        <p className="text-muted-foreground text-xs mb-1">{label}</p>
+      <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.08)] px-3 py-2">
+        <p className="font-mono text-[9px] text-[#555] uppercase tracking-widest mb-1">{label}</p>
         {payload.map((p: any, i: number) => (
-          <p key={i} style={{ color: p.color }} className="font-medium">{p.name}: {p.value}</p>
+          <p key={i} className="font-mono text-[11px] font-bold" style={{ color: p.color ?? "#8b5cf6" }}>{p.value}</p>
         ))}
       </div>
     );
@@ -31,122 +31,112 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 interface Props {
   weeklyXpData: { day: string; xp: number }[];
-  analytics: {
-    completions: any[];
-    skills: any[];
-    focusSessions: any[];
-  } | null;
+  analytics: { completions: any[]; skills: any[]; focusSessions: any[] } | null;
+  xpCurveData: { date: string; cumulative_xp: number }[];
 }
 
-export function AnalyticsClient({ weeklyXpData, analytics }: Props) {
+export function AnalyticsClient({ weeklyXpData, analytics, xpCurveData }: Props) {
   const skills = analytics?.skills || [];
   const focusSessions = analytics?.focusSessions || [];
   const completions = analytics?.completions || [];
 
   const domainXpData = skills
     .filter((s) => s.xp > 0)
-    .map((s) => ({
-      name: getDomainLabel(s.domain).replace(" / ", "\n").replace(" & ", "\n"),
-      xp: s.xp,
-      color: getDomainColor(s.domain),
-    }))
+    .map((s) => ({ name: getDomainLabel(s.domain), xp: s.xp, color: getDomainColor(s.domain) }))
     .sort((a, b) => b.xp - a.xp);
 
   const totalFocusMinutes = focusSessions.reduce((s: number, f: any) => s + f.duration_minutes, 0);
   const totalXpEarned = completions.reduce((s: number, c: any) => s + c.xp_earned, 0);
 
-  // Focus sessions by domain
   const focusByDomain: Record<string, number> = {};
-  focusSessions.forEach((f: any) => {
-    focusByDomain[f.domain] = (focusByDomain[f.domain] || 0) + f.duration_minutes;
-  });
+  focusSessions.forEach((f: any) => { focusByDomain[f.domain] = (focusByDomain[f.domain] || 0) + f.duration_minutes; });
   const focusData = Object.entries(focusByDomain).map(([domain, minutes]) => ({
-    name: getDomainLabel(domain),
-    minutes,
-    color: getDomainColor(domain),
+    name: getDomainLabel(domain), minutes, color: getDomainColor(domain),
   })).sort((a, b) => b.minutes - a.minutes);
+
+  const stats = [
+    { label: "Quests Done",    value: completions.length },
+    { label: "Total XP",       value: totalXpEarned.toLocaleString() },
+    { label: "Focus Hours",    value: `${Math.round(totalFocusMinutes / 60)}h` },
+    { label: "Focus Sessions", value: focusSessions.length },
+  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Performance insights over the last 30 days</p>
+        <p className="font-mono text-[9px] tracking-[0.25em] uppercase text-[#444] mb-1">// ascension_os · analytics</p>
+        <h1 className="font-mono text-xl font-bold text-[#e8e8e8]">Performance<span className="text-violet-500">_</span></h1>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: "Quests Completed", value: completions.length, color: "text-green-400" },
-          { label: "Total XP Earned", value: totalXpEarned.toLocaleString(), color: "text-violet-400" },
-          { label: "Focus Hours", value: `${Math.round(totalFocusMinutes / 60)}h`, color: "text-blue-400" },
-          { label: "Focus Sessions", value: focusSessions.length, color: "text-amber-400" },
-        ].map((stat) => (
-          <Card key={stat.label} className="card-glow">
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            </CardContent>
-          </Card>
+      {/* Stats strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[rgba(255,255,255,0.03)]">
+        {stats.map((s) => (
+          <div key={s.label} className="bg-[#080808] p-5">
+            <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#555] mb-2">{s.label}</p>
+            <p className="font-mono text-3xl font-bold text-[#e8e8e8]">{s.value}</p>
+          </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card className="card-glow">
-          <CardHeader><CardTitle className="text-sm">Weekly XP</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={weeklyXpData} barSize={32}>
-                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--accent))" }} />
-                <Bar dataKey="xp" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="XP" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {/* XP Progression curve */}
+      <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.06)] p-5">
+        <p className="font-mono text-[9px] tracking-[0.22em] uppercase text-[#444] mb-4">// xp_progression · 30_days</p>
+        <XPCurveChart data={xpCurveData} />
+      </div>
 
-        <Card className="card-glow">
-          <CardHeader><CardTitle className="text-sm">Domain XP Distribution</CardTitle></CardHeader>
-          <CardContent>
-            {domainXpData.length === 0 ? (
-              <div className="flex h-[200px] items-center justify-center text-muted-foreground text-sm">
-                Complete quests to see distribution
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={domainXpData} dataKey="xp" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={renderCustomLabel}>
-                    {domainXpData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(val) => [`${val} XP`, ""]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+      {/* Weekly XP + Domain distribution */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.06)] p-5">
+          <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#444] mb-4">// weekly_xp</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={weeklyXpData} barSize={18}>
+              <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#444", fontFamily: "monospace" }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#444", fontFamily: "monospace" }} />
+              <Tooltip content={<DarkTooltip />} cursor={{ fill: "rgba(255,255,255,0.02)" }} />
+              <Bar dataKey="xp" fill="#8b5cf6" fillOpacity={0.8} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.06)] p-5">
+          <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#444] mb-4">// domain_xp_distribution</p>
+          {domainXpData.length === 0 ? (
+            <div className="flex h-[180px] items-center justify-center font-mono text-[10px] text-[#333]">
+              no data yet
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={domainXpData} dataKey="xp" nameKey="name" cx="50%" cy="50%" outerRadius={75} labelLine={false} label={renderCustomLabel}>
+                  {domainXpData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(val) => [`${val} XP`, ""]} contentStyle={{ backgroundColor: "#0a0a0a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0", fontSize: "11px", fontFamily: "monospace" }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       {focusData.length > 0 && (
-        <Card className="card-glow">
-          <CardHeader><CardTitle className="text-sm">Focus Time by Domain (minutes)</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={focusData} layout="vertical" barSize={20}>
-                <CartesianGrid horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={120} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--accent))" }} />
-                <Bar dataKey="minutes" radius={[0, 4, 4, 0]} name="Minutes">
-                  {focusData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.06)] p-5">
+          <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[#444] mb-4">// focus_time · by_domain</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={focusData} layout="vertical" barSize={14}>
+              <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.04)" />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#444", fontFamily: "monospace" }} />
+              <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "#444", fontFamily: "monospace" }} width={100} />
+              <Tooltip content={<DarkTooltip />} cursor={{ fill: "rgba(255,255,255,0.02)" }} />
+              <Bar dataKey="minutes" fillOpacity={0.8}>
+                {focusData.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );
