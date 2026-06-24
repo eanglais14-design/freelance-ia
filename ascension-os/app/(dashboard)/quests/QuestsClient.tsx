@@ -52,6 +52,17 @@ export function QuestsClient({ daily, weekly, longterm }: Props) {
     }
   };
 
+  const handleDelete = async (questId: string) => {
+    const result = await deleteQuest(questId);
+    if (result.success) {
+      const remove = (q: Quest) => q.id !== questId;
+      setDailyQuests((p) => p.filter(remove));
+      setWeeklyQuests((p) => p.filter(remove));
+      setLongtermQuests((p) => p.filter(remove));
+      toast({ title: "Quest deleted", variant: "success" });
+    }
+  };
+
   const handleCreate = async () => {
     if (!form.title.trim()) return;
     setSaving(true);
@@ -75,7 +86,7 @@ export function QuestsClient({ daily, weekly, longterm }: Props) {
           <p className="text-sm">No quests yet. Create one to begin.</p>
         </div>
       ) : (
-        quests.map((q) => <QuestCard key={q.id} quest={q} onComplete={handleComplete} />)
+        quests.map((q) => <QuestCard key={q.id} quest={q} onComplete={handleComplete} onDelete={handleDelete} />)
       )}
     </div>
   );

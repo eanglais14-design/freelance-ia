@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { Quest } from "@/types";
 import { getDomainColor, getDomainIcon, cn } from "@/lib/utils";
 
 interface QuestCardProps {
   quest: Quest;
   onComplete?: (questId: string) => void;
+  onDelete?: (questId: string) => void;
   onSkip?: (questId: string) => void;
   compact?: boolean;
 }
@@ -18,8 +19,9 @@ const diffLabel: Record<string, { code: string; color: string }> = {
   boss:   { code: "B", color: "#ef4444" },
 };
 
-export function QuestCard({ quest, onComplete, compact = false }: QuestCardProps) {
+export function QuestCard({ quest, onComplete, onDelete, compact = false }: QuestCardProps) {
   const [completing, setCompleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const domainColor = getDomainColor(quest.domain);
   const domainIcon = getDomainIcon(quest.domain);
   const done = quest.status === "completed";
@@ -33,9 +35,16 @@ export function QuestCard({ quest, onComplete, compact = false }: QuestCardProps
     setCompleting(false);
   };
 
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    await onDelete?.(quest.id);
+    setDeleting(false);
+  };
+
   return (
     <div className={cn(
-      "relative flex items-center gap-3 px-4 py-2.5 border-b border-[rgba(255,255,255,0.04)] transition-all duration-150",
+      "group relative flex items-center gap-3 px-4 py-2.5 border-b border-[rgba(255,255,255,0.04)] transition-all duration-150",
       !done && !skipped && "hover:bg-[rgba(255,255,255,0.02)]",
       (done || skipped) && "opacity-40",
     )}>
@@ -65,6 +74,15 @@ export function QuestCard({ quest, onComplete, compact = false }: QuestCardProps
           <div className="w-4 h-4 border border-violet-500/40 bg-violet-500/10 flex items-center justify-center">
             <Check className="h-2 w-2 text-violet-400" />
           </div>
+        )}
+        {onDelete && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center text-[#444] hover:text-red-500/70 transition-all duration-150"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
         )}
       </div>
     </div>
